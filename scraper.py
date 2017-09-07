@@ -6,6 +6,7 @@ import logging
 import json
 import scraperwiki
 from datetime import datetime, timedelta
+import hashlib
 
 INDEX_URL = "http://www.sgg.ro/legislativ/index.php/"
 
