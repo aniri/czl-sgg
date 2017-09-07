@@ -40,6 +40,8 @@ def extract_documents(selector_list):
                 'type': link_selector.css('::text').extract_first(),
                 'url': url,
             }
+def identify(institution, titlu):
+    return " : ".join([hashlib.md5(titlu.encode('utf-8')).hexdigest(), institution])
 
 def xtract(obj, sel):
     ret = obj.xpath(sel).extract_first()
@@ -88,7 +90,7 @@ class SggSpider(scrapy.Spider):
                 ]
                 json_documents = json.dumps(documents)
 
-                publication['identifier'] = response.url
+                publication['identifier'] = identify(institution, titlu)
                 publication['title'] = titlu
                 publication['type'] = type_
                 publication['institution'] = "sgg"
