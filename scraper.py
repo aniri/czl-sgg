@@ -41,8 +41,9 @@ def extract_documents(selector_list):
                 'type': link_selector.css('::text').extract_first(),
                 'url': url,
             }
-def identify(institution, titlu):
-    return " : ".join([hashlib.md5(titlu.encode('utf-8')).hexdigest(), institution])
+
+def identify(institution, titlu, url):
+    return " : ".join([institution, url, hashlib.md5(titlu.encode('utf-8')).hexdigest()])
 
 def xtract(obj, sel):
     ret = obj.xpath(sel).extract_first()
@@ -63,7 +64,6 @@ class SggSpider(scrapy.Spider):
 
         for link in links:
             yield scrapy.Request(response.urljoin(link), callback=self.parse_article)
-
 
     def parse_article(self, response):
         institution = response.xpath('//h2/text()').extract()[0].strip()
@@ -91,7 +91,7 @@ class SggSpider(scrapy.Spider):
                 ]
                 json_documents = json.dumps(documents)
 
-                publication['identifier'] = identify(institution, titlu)
+                publication['identifier'] = identify(institution, titlu, response.url)
                 publication['title'] = titlu
                 publication['type'] = type_
                 publication['institution'] = "sgg"
@@ -102,6 +102,14 @@ class SggSpider(scrapy.Spider):
                 publication['documents'] = json_documents
 
                 scraperwiki.sqlite.save(unique_keys=['identifier'], data=dict(publication))
+
+        # get link of next page
+        pag_node = response.css('div.pag')
+        links = pag_node.css('a::attr(href)').extract()
+        next_page_url = links[-1]
+        # if there is a net page, parse that also
+        if (response.url is not response.urljoin(next_page_url)):
+            yield scrapy.Request(response.urljoin(next_page_url), callback=self.parse_article)
 
     def parse_date(self, text):
         try:
