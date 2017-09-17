@@ -21,6 +21,15 @@ class Publication(scrapy.Item):
     contact = scrapy.Field()
     feedback_days = scrapy.Field()
     max_feedback_date = scrapy.Field()
+    # specific to SGG docs
+    date_consultare = scrapy.Field()
+    date_procedura_avizare = scrapy.Field()
+    avizatori = scrapy.Field()
+    date_termen_avize = scrapy.Field()
+    mfpmjmfe = scrapy.Field()
+    date_termen_reavizare = scrapy.Field()
+    initiator = scrapy.Field()
+
 
 PUBLISH_DATE_FORMAT = '%Y-%m-%d'
 DOC_EXTENSIONS = [".docs", ".doc", ".txt", ".crt", ".xls", ".xml", ".pdf", ".docx", ".xlsx", ]
@@ -59,7 +68,7 @@ class SggSpider(scrapy.Spider):
     start_urls = [INDEX_URL]
 
     def parse(self, response):
-        links = response.css('a::attr(href)').extract()
+        links = response.css('option::attr(value)').extract()
         links = list(set([response.urljoin(link) for link in links if "domeniu.php" in link]))
 
         for link in links:
@@ -101,15 +110,25 @@ class SggSpider(scrapy.Spider):
                 publication['contact'] = None
                 publication['documents'] = json_documents
 
+                publication['date_consultare'] = consult
+                publication['date_procedura_avizare'] = avizare
+                publication['avizatori'] = avizori
+                publication['date_termen_avize'] = termen_avize
+                publication['mfpmjmfe'] = mfp_mj
+                publication['date_termen_reavizare'] = reavizare
+                publication['initiator'] = institution
+
                 scraperwiki.sqlite.save(unique_keys=['identifier'], data=dict(publication))
 
         # get link of next page
         pag_node = response.css('div.pag')
-        links = pag_node.css('a::attr(href)').extract()
-        next_page_url = links[-1]
-        # if there is a net page, parse that also
-        if (response.url is not response.urljoin(next_page_url)):
-            yield scrapy.Request(response.urljoin(next_page_url), callback=self.parse_article)
+        if pag_node is not None:
+            links = pag_node.css('a::attr(href)').extract()
+            if len(links) > 0:
+                next_page_url = links[-1]
+                # if there is a next page, parse that also
+                if (response.url is not response.urljoin(next_page_url)):
+                    yield scrapy.Request(response.urljoin(next_page_url), callback=self.parse_article)
 
     def parse_date(self, text):
         try:
